@@ -344,7 +344,9 @@ def main():
             url_path=TOKEN,
             webhook_url=(webhook_url + "/" + TOKEN) if webhook_url else None
         )
-
+        print(f"✅ تم إعداد Webhook على الرابط: {webhook_url}")
+        logger.info(f"Webhook مُنشئ على: {webhook_url}")
+    
     except Exception as e:
         logger.critical(f"💥 فشل تشغيل البوت: {e}")
         traceback.print_exc()
@@ -367,6 +369,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
