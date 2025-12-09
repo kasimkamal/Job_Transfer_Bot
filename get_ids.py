@@ -3,7 +3,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-TOKEN = "8010889318:AAGhZ0wuA6IypS0tXhTUtDnWQZg5b-Ir6us"
+TOKEN = "Token here"
 
 def handle_message(update, context):
     msg = update.message
@@ -26,4 +26,5 @@ def main():
     app.run_polling()
 
 if __name__ == "__main__":
+
     main()
