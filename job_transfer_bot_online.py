@@ -1,22 +1,3 @@
-import asyncio, inspect
-loop = asyncio.get_event_loop()
-print("Event loop running:", loop.is_running())
-print("Loop type:", type(loop))
-print("Any running tasks:", len(asyncio.all_tasks(loop)))
-
-
-import pkgutil, sys
-print("=== DIAGNOSTIC PACKAGES ===")
-for name in ("aiohttp", "yarl", "python_telegram_bot", "python-telegram-bot", "telegram"):
-    try:
-        mod = __import__(name.replace("-", "_"))
-        print(name, "->", getattr(mod, "__file__", "built-in"))
-    except Exception as e:
-        print(name, "not importable:", e)
-print("=== END DIAGNOSTIC ===")
-
-
-
 import traceback
 import asyncio
 import logging
@@ -369,6 +350,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
