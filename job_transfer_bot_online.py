@@ -302,7 +302,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if update.effective_user:
                 logger.error(f"👤 المستخدم: {update.effective_user.username or update.effective_user.first_name}")
 
-async def main():
+def main():
     print("🧹 جاري تنظيف الملفات القديمة...")
     clean_old_logs(days_to_keep=60)
 
@@ -314,8 +314,10 @@ async def main():
     webhook_url = os.environ.get("WEBHOOK_URL")
 
     try:
+        # Build application (synchronous)
         application = Application.builder().token(TOKEN).build()
 
+        # Register handlers
         application.add_handler(MessageHandler(
             filters.Chat(chat_id=GROUP_CHAT_ID) & ~filters.COMMAND,
             handle_new_job
@@ -324,8 +326,8 @@ async def main():
         application.add_handler(CallbackQueryHandler(button_callback))
         application.add_error_handler(error_handler)
 
-        # Do NOT call application.initialize() here; run_webhook handles lifecycle.
-        await application.run_webhook(
+        # Run webhook as a blocking call (do NOT await)
+        application.run_webhook(
             listen="0.0.0.0",
             port=int(os.environ.get("PORT", 8080)),
             url_path=TOKEN,
@@ -338,22 +340,21 @@ async def main():
         print(f"💥 خطأ حرج: {e}")
 
     finally:
-        # Only attempt graceful shutdown if the application is running
+        # run_webhook blocks until shutdown; when it returns, ensure cleanup
         if application is not None:
             try:
-                is_running = getattr(application, "running", False)
-                if is_running:
-                    await application.shutdown()
-                    await application.stop()
+                # application.shutdown/stop are synchronous wrappers here; call them if needed
+                # but usually run_webhook handles lifecycle; keep this safe guard
+                if getattr(application, "running", False):
+                    application.shutdown()
+                    application.stop()
                     logger.info("✅ Application shutdown completed")
             except Exception as shutdown_exc:
                 logger.warning(f"⚠️ خطأ أثناء الإغلاق: {shutdown_exc}")
                 traceback.print_exc()
 
+
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
-
-
+    main()
 
 
