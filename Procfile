@@ -1,1 +1,1 @@
-worker: python job_transfer_bot_online.py
+web: python job_transfer_bot_online.py
