@@ -1,3 +1,11 @@
+import asyncio, inspect
+loop = asyncio.get_event_loop()
+print("Event loop running:", loop.is_running())
+print("Loop type:", type(loop))
+print("Any running tasks:", len(asyncio.all_tasks(loop)))
+
+
+
 import traceback
 import asyncio
 import logging
@@ -306,10 +314,8 @@ async def main():
     webhook_url = os.environ.get("WEBHOOK_URL")
 
     try:
-        # Build application
         application = Application.builder().token(TOKEN).build()
 
-        # Register handlers
         application.add_handler(MessageHandler(
             filters.Chat(chat_id=GROUP_CHAT_ID) & ~filters.COMMAND,
             handle_new_job
@@ -318,34 +324,28 @@ async def main():
         application.add_handler(CallbackQueryHandler(button_callback))
         application.add_error_handler(error_handler)
 
-        # Initialize application (ensures internal resources are ready)
-        await application.initialize()
-
-        # Run webhook server (this call blocks until shutdown)
+        # Do NOT call application.initialize() here; run_webhook handles lifecycle.
         await application.run_webhook(
             listen="0.0.0.0",
             port=int(os.environ.get("PORT", 8080)),
             url_path=TOKEN,
             webhook_url=(webhook_url + "/" + TOKEN) if webhook_url else None
         )
-        # ✅ Now you can log it
-        print(f"✅ تم إعداد Webhook على الرابط: {webhook_url}")
-        logger.info(f"Webhook مُنشئ على: {webhook_url}")
-        
+
     except Exception as e:
-        # Print full traceback to logs for diagnosis
         logger.critical(f"💥 فشل تشغيل البوت: {e}")
         traceback.print_exc()
         print(f"💥 خطأ حرج: {e}")
 
     finally:
-        # Ensure graceful shutdown if application was created
+        # Only attempt graceful shutdown if the application is running
         if application is not None:
             try:
-                # Shutdown and stop must be awaited to avoid "coroutine was never awaited"
-                await application.shutdown()
-                await application.stop()
-                logger.info("✅ Application shutdown completed")
+                is_running = getattr(application, "running", False)
+                if is_running:
+                    await application.shutdown()
+                    await application.stop()
+                    logger.info("✅ Application shutdown completed")
             except Exception as shutdown_exc:
                 logger.warning(f"⚠️ خطأ أثناء الإغلاق: {shutdown_exc}")
                 traceback.print_exc()
