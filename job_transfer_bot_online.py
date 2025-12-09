@@ -1,3 +1,4 @@
+import traceback
 import asyncio
 import logging
 import os
@@ -294,55 +295,65 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"👤 المستخدم: {update.effective_user.username or update.effective_user.first_name}")
 
 async def main():
-    """الدالة الرئيسية المعدلة لتشغيل البوت على Replit باستخدام Webhook"""
-    # 🧹 تنظيف الملفات القديمة عند البدء
     print("🧹 جاري تنظيف الملفات القديمة...")
     clean_old_logs(days_to_keep=60)
 
-    # 🚀 بدء تشغيل البوت
     print("=" * 70)
     print("🚀 بوت نقل الوظائف - معدل لـ Render (Webhook)")
     print("=" * 70)
 
+    application = None
+    webhook_url = os.environ.get("WEBHOOK_URL")
+
     try:
-        # 1. إنشاء كائن Application
+        # Build application
         application = Application.builder().token(TOKEN).build()
 
-        # 2. إضافة المعالجات (Handlers) - نفس الكود القديم
+        # Register handlers
         application.add_handler(MessageHandler(
-            filters.Chat(chat_id=GROUP_CHAT_ID) & 
-            ~filters.COMMAND,
+            filters.Chat(chat_id=GROUP_CHAT_ID) & ~filters.COMMAND,
             handle_new_job
         ))
         application.add_handler(CommandHandler("start", start))
         application.add_handler(CallbackQueryHandler(button_callback))
         application.add_error_handler(error_handler)
 
-        # 3. تشغيل الـ Webhook بشكل صحيح
-        # ✅ Define webhook_url first
-        webhook_url = os.environ.get("WEBHOOK_URL")
+        # Initialize application (ensures internal resources are ready)
+        await application.initialize()
 
-        # ✅ Run webhook server
+        # Run webhook server (this call blocks until shutdown)
         await application.run_webhook(
             listen="0.0.0.0",
             port=int(os.environ.get("PORT", 8080)),
             url_path=TOKEN,
-            webhook_url=webhook_url + "/" + TOKEN
+            webhook_url=(webhook_url + "/" + TOKEN) if webhook_url else None
         )
-
         # ✅ Now you can log it
         print(f"✅ تم إعداد Webhook على الرابط: {webhook_url}")
         logger.info(f"Webhook مُنشئ على: {webhook_url}")
         
     except Exception as e:
-        logger.critical(f"💥 فشل تشغيل البوت: {str(e)}")
-        print(f"💥 خطأ حرج: {str(e)}")
+        # Print full traceback to logs for diagnosis
+        logger.critical(f"💥 فشل تشغيل البوت: {e}")
+        traceback.print_exc()
+        print(f"💥 خطأ حرج: {e}")
 
+    finally:
+        # Ensure graceful shutdown if application was created
+        if application is not None:
+            try:
+                # Shutdown and stop must be awaited to avoid "coroutine was never awaited"
+                await application.shutdown()
+                await application.stop()
+                logger.info("✅ Application shutdown completed")
+            except Exception as shutdown_exc:
+                logger.warning(f"⚠️ خطأ أثناء الإغلاق: {shutdown_exc}")
+                traceback.print_exc()
 
 if __name__ == "__main__":
     import asyncio
-
     asyncio.run(main())
+
 
 
 
