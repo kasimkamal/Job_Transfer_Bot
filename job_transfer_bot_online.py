@@ -335,11 +335,13 @@ async def main():
         logger.info(f"Webhook مُنشئ على: {webhook_url}")
         
     except Exception as e:
-        logger.critical(f"💥 فشل تشغيل البوت: {str(e)}")
-        print(f"💥 خطأ حرج: {str(e)}")
+    logger.critical(f"💥 فشل تشغيل البوت: {str(e)}")
+    traceback.print_exc()   # <-- add this to print full stack to logs
+    print(f"💥 خطأ حرج: {str(e)}")
 
 if __name__ == "__main__":
     import asyncio
 
     asyncio.run(main())
+
 
