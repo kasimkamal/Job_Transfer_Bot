@@ -1,3 +1,34 @@
+import sys, subprocess, os, logging, pkgutil
+
+print("=== STARTUP DIAGNOSTIC ===")
+print("Python:", sys.version.replace("\n", " "))
+try:
+    import importlib
+    mod = importlib.import_module("telegram")
+    print("telegram module file:", getattr(mod, "__file__", "built-in or namespace package"))
+    try:
+        from telegram import __version__ as tg_ver
+        print("telegram.__version__:", tg_ver)
+    except Exception:
+        print("telegram.__version__ not available")
+except Exception as e:
+    print("Failed to import telegram:", e)
+
+# Print pip freeze to logs (may be long)
+try:
+    import pkg_resources
+    installed = sorted([f"{p.key}=={p.version}" for p in pkg_resources.working_set])
+    print("=== pip freeze (sample) ===")
+    for line in installed:
+        if "telegram" in line or "python-telegram-bot" in line:
+            print(line)
+except Exception as e:
+    print("Failed to list packages:", e)
+
+print("=== END STARTUP DIAGNOSTIC ===")
+
+
+
 import asyncio
 import logging
 import os
@@ -340,4 +371,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
