@@ -1,2 +1,9 @@
+# Core bot library
 python-telegram-bot==20.6
+
+# Async compatibility for environments like Render
 nest-asyncio==1.6.0
+
+# Pin pip and setuptools to modern versions (avoids old defaults on Render)
+pip==24.2
+setuptools==75.1.0
