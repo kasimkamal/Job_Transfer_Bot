@@ -301,7 +301,7 @@ async def main():
 
     # 🚀 بدء تشغيل البوت
     print("=" * 70)
-    print("🚀 بوت نقل الوظائف - معدل لـ Replit (Webhook)")
+    print("🚀 بوت نقل الوظائف - معدل لـ Render (Webhook)")
     print("=" * 70)
 
     try:
@@ -318,36 +318,26 @@ async def main():
         application.add_handler(CallbackQueryHandler(button_callback))
         application.add_error_handler(error_handler)
 
-        # 3. 🔥 التعديل الجوهري: تشغيل Webhook بدلاً من Polling
-        from telegram import Bot
-        import nest_asyncio
-        nest_asyncio.apply() # مهم لبيئة Replit
+        # 3. تشغيل الـ Webhook بشكل صحيح
+        # ✅ Define webhook_url first
+        webhook_url = os.environ.get("WEBHOOK_URL")
 
-        # ابدأ خادم Flask لإبقاء النافذة نشطة
-        from keep_alive import keep_alive, ping_self
-        keep_alive()
-        # ابدأ خيط ping_self في الخلفية
-        import threading
-        threading.Thread(target=ping_self, daemon=True).start()
+        # ✅ Run webhook server
+        await application.run_webhook(
+            listen="0.0.0.0",
+            port=int(os.environ.get("PORT", 8080)),
+            url_path=TOKEN,
+            webhook_url=webhook_url + "/" + TOKEN
+        )
 
-        # إعداد عنوان الـ Webhook (سيكون مشابهًا لـ https://YourReplName.yourusername.repl.co)
-        # سنضبط هذا الرابط لاحقاً من خارج الكود
-        webhook_url = "https://YourReplName.yourusername.repl.co" # سنغير هذا لاحقاً
-
-        # قم بإعداد Webhook على سيرفرات تلغرام
-        await application.bot.set_webhook(url=webhook_url + '/' + TOKEN)
+        # ✅ Now you can log it
         print(f"✅ تم إعداد Webhook على الرابط: {webhook_url}")
         logger.info(f"Webhook مُنشئ على: {webhook_url}")
-
-        # اجعل البرنامج يعمل إلى الأبد (خادم Flask يعمل في الخلفية)
-        while True:
-            await asyncio.sleep(3600) # انتظر ساعة (أو أي فترة)
-
+        
     except Exception as e:
         logger.critical(f"💥 فشل تشغيل البوت: {str(e)}")
         print(f"💥 خطأ حرج: {str(e)}")
 
 if __name__ == "__main__":
-    # هذا ضروري لتنفيذ الكود بشكل غير متزامن في Replit
     import asyncio
     asyncio.run(main())
