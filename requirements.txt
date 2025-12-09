@@ -7,3 +7,6 @@ nest-asyncio==1.6.0
 # Pin pip and setuptools to modern versions (avoids old defaults on Render)
 pip==24.2
 setuptools==75.1.0
+
+aiohttp==3.8.4
+
