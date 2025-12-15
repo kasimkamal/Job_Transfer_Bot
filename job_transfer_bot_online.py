@@ -372,7 +372,6 @@ def ensure_webhook_registered(token: str, base_url: str, max_retries: int = 5) -
 
 
 def main():
-    def main():
     # existing startup logs and cleanup
     print("🧹 جاري تنظيف الملفات القديمة...")
     clean_old_logs(days_to_keep=60)
@@ -432,6 +431,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
