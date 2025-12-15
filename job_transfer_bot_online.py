@@ -294,6 +294,60 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if update.effective_user:
                 logger.error(f"👤 المستخدم: {update.effective_user.username or update.effective_user.first_name}")
 
+
+import requests, time, sys, logging
+
+def ensure_webhook_registered(token: str, base_url: str, max_retries: int = 5):
+    base_url = base_url.rstrip("/")
+    full_url = f"{base_url}/{token}"
+    api_base = f"https://api.telegram.org/bot{token}"
+    logger = logging.getLogger(__name__)
+
+    # Check current webhook
+    try:
+        r = requests.get(f"{api_base}/getWebhookInfo", timeout=10)
+        logger.info("getWebhookInfo: %s", r.text)
+    except Exception as e:
+        logger.warning("getWebhookInfo failed: %s", e)
+        r = None
+
+    current_url = None
+    try:
+        if r and r.ok:
+            current_url = r.json().get("result", {}).get("url")
+    except Exception:
+        current_url = None
+
+    if current_url == full_url:
+        logger.info("Webhook already set to %s", full_url)
+        print(f"✅ Webhook already set to {full_url}")
+        sys.stdout.flush()
+        return True
+
+    # Try to set webhook with retries
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info("Setting webhook to %s (attempt %d)", full_url, attempt)
+            resp = requests.post(f"{api_base}/setWebhook", data={"url": full_url}, timeout=10)
+            logger.info("setWebhook response: %s", resp.text)
+            print("setWebhook response:", resp.status_code, resp.text)
+            sys.stdout.flush()
+            if resp.ok and resp.json().get("ok"):
+                logger.info("Webhook registered successfully")
+                return True
+        except Exception as exc:
+            logger.warning("setWebhook attempt %d failed: %s", attempt, exc)
+
+        time.sleep(2 * attempt)
+
+    logger.error("Failed to register webhook after %d attempts", max_retries)
+    return False
+
+
+
+
+
+
 def main():
     print("🧹 جاري تنظيف الملفات القديمة...")
     clean_old_logs(days_to_keep=60)
@@ -302,36 +356,48 @@ def main():
     print("🚀 بوت نقل الوظائف - معدل لـ Render (Webhook)")
     print("=" * 70)
 
-    application = None
-    webhook_url = os.environ.get("WEBHOOK_URL")
 
-    try:
-        # Build application (synchronous)
-        application = Application.builder().token(TOKEN).build()
 
-        # Register handlers
-        application.add_handler(MessageHandler(
-            filters.Chat(chat_id=GROUP_CHAT_ID) & ~filters.COMMAND,
-            handle_new_job
-        ))
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CallbackQueryHandler(button_callback))
-        application.add_error_handler(error_handler)
 
-        # Run webhook as a blocking call (do NOT await)
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=int(os.environ.get("PORT", 8080)),
-            url_path=TOKEN,
-            webhook_url=(webhook_url + "/" + TOKEN) if webhook_url else None
-        )
-        print(f"✅ تم إعداد Webhook على الرابط: {webhook_url}")
-        logger.info(f"Webhook مُنشئ على: {webhook_url}")
+ok = ensure_webhook_registered(TOKEN, os.environ.get("WEBHOOK_URL", ""))
+if not ok:
+    logger.warning("Webhook registration failed; continuing to run so you can inspect logs.")
+
+
+
+
+
     
-    except Exception as e:
-        logger.critical(f"💥 فشل تشغيل البوت: {e}")
-        traceback.print_exc()
-        print(f"💥 خطأ حرج: {e}")
+    # application = None
+    # webhook_url = os.environ.get("WEBHOOK_URL")
+
+    # try:
+    #     # Build application (synchronous)
+    #     application = Application.builder().token(TOKEN).build()
+
+    #     # Register handlers
+    #     application.add_handler(MessageHandler(
+    #         filters.Chat(chat_id=GROUP_CHAT_ID) & ~filters.COMMAND,
+    #         handle_new_job
+    #     ))
+    #     application.add_handler(CommandHandler("start", start))
+    #     application.add_handler(CallbackQueryHandler(button_callback))
+    #     application.add_error_handler(error_handler)
+
+    #     # Run webhook as a blocking call (do NOT await)
+    #     application.run_webhook(
+    #         listen="0.0.0.0",
+    #         port=int(os.environ.get("PORT", 8080)),
+    #         url_path=TOKEN,
+    #         webhook_url=(webhook_url + "/" + TOKEN) if webhook_url else None
+    #     )
+    #     print(f"✅ تم إعداد Webhook على الرابط: {webhook_url}")
+    #     logger.info(f"Webhook مُنشئ على: {webhook_url}")
+    
+    # except Exception as e:
+    #     logger.critical(f"💥 فشل تشغيل البوت: {e}")
+    #     traceback.print_exc()
+    #     print(f"💥 خطأ حرج: {e}")
 
     finally:
         # run_webhook blocks until shutdown; when it returns, ensure cleanup
@@ -350,6 +416,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
