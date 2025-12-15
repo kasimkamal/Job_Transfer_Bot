@@ -4,10 +4,7 @@ import logging
 import os
 import time
 import glob
-
 import requests, sys
-
-
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -220,7 +217,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "move_to_applied":
         logger.info(f"📝 طلب تأكيد من {user_name} للرسالة {original_message.message_id}")
         await query.edit_message_text(
-            f"⚠️ **{user_name}، هل أنت متأكد من انتهاء التقديم؟**",
+            f"⚠️ {user_name}، **هل أنت متأكد من انتهاء التقديم؟**",
             reply_markup=CONFIRM_KEYBOARD
         )
     
@@ -431,6 +428,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
