@@ -4,6 +4,10 @@ import logging
 import os
 import time
 import glob
+
+import requests, sys
+
+
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -295,7 +299,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"👤 المستخدم: {update.effective_user.username or update.effective_user.first_name}")
 
 
-import requests, time, sys, logging
+
 
 def ensure_webhook_registered(token: str, base_url: str, max_retries: int = 5):
     base_url = base_url.rstrip("/")
@@ -416,6 +420,7 @@ if not ok:
 
 if __name__ == "__main__":
     main()
+
 
 
 
