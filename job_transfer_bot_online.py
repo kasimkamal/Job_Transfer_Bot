@@ -399,23 +399,24 @@ if not ok:
     #     traceback.print_exc()
     #     print(f"💥 خطأ حرج: {e}")
 
-    finally:
-        # run_webhook blocks until shutdown; when it returns, ensure cleanup
-        if application is not None:
-            try:
-                # application.shutdown/stop are synchronous wrappers here; call them if needed
-                # but usually run_webhook handles lifecycle; keep this safe guard
-                if getattr(application, "running", False):
-                    application.shutdown()
-                    application.stop()
-                    logger.info("✅ Application shutdown completed")
-            except Exception as shutdown_exc:
-                logger.warning(f"⚠️ خطأ أثناء الإغلاق: {shutdown_exc}")
-                traceback.print_exc()
+    # finally:
+    #     # run_webhook blocks until shutdown; when it returns, ensure cleanup
+    #     if application is not None:
+    #         try:
+    #             # application.shutdown/stop are synchronous wrappers here; call them if needed
+    #             # but usually run_webhook handles lifecycle; keep this safe guard
+    #             if getattr(application, "running", False):
+    #                 application.shutdown()
+    #                 application.stop()
+    #                 logger.info("✅ Application shutdown completed")
+    #         except Exception as shutdown_exc:
+    #             logger.warning(f"⚠️ خطأ أثناء الإغلاق: {shutdown_exc}")
+    #             traceback.print_exc()
 
 
 if __name__ == "__main__":
     main()
+
 
 
 
