@@ -301,11 +301,26 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-def ensure_webhook_registered(token: str, base_url: str, max_retries: int = 5):
-    base_url = base_url.rstrip("/")
+def ensure_webhook_registered(token: str, base_url: str, max_retries: int = 5) -> bool:
+    """
+    Ensure Telegram webhook is registered to base_url/token.
+    Returns True if webhook is set to the expected URL.
+    """
+    logger = logging.getLogger(__name__)
+    base_url = (base_url or "").rstrip("/")
+    if not base_url:
+        logger.error("WEBHOOK_URL is empty. Cannot register webhook.")
+        print("ERROR: WEBHOOK_URL is empty. Please set WEBHOOK_URL environment variable.")
+        sys.stdout.flush()
+        return False
+
     full_url = f"{base_url}/{token}"
     api_base = f"https://api.telegram.org/bot{token}"
-    logger = logging.getLogger(__name__)
+
+    # Diagnostic print
+    print("DEBUG: full webhook URL =", full_url)
+    sys.stdout.flush()
+    logger.info("DEBUG: full webhook URL = %s", full_url)
 
     # Check current webhook
     try:
@@ -338,6 +353,8 @@ def ensure_webhook_registered(token: str, base_url: str, max_retries: int = 5):
             sys.stdout.flush()
             if resp.ok and resp.json().get("ok"):
                 logger.info("Webhook registered successfully")
+                print(f"✅ Webhook registered successfully: {full_url}")
+                sys.stdout.flush()
                 return True
         except Exception as exc:
             logger.warning("setWebhook attempt %d failed: %s", attempt, exc)
@@ -345,6 +362,8 @@ def ensure_webhook_registered(token: str, base_url: str, max_retries: int = 5):
         time.sleep(2 * attempt)
 
     logger.error("Failed to register webhook after %d attempts", max_retries)
+    print(f"ERROR: Failed to register webhook after {max_retries} attempts")
+    sys.stdout.flush()
     return False
 
 
@@ -353,6 +372,8 @@ def ensure_webhook_registered(token: str, base_url: str, max_retries: int = 5):
 
 
 def main():
+    def main():
+    # existing startup logs and cleanup
     print("🧹 جاري تنظيف الملفات القديمة...")
     clean_old_logs(days_to_keep=60)
 
@@ -360,66 +381,58 @@ def main():
     print("🚀 بوت نقل الوظائف - معدل لـ Render (Webhook)")
     print("=" * 70)
 
+    application = None
+    webhook_base = os.environ.get("WEBHOOK_URL", "")
+    token = TOKEN  # ensure TOKEN is defined earlier from env
 
+    try:
+        # Build application and register handlers (synchronous)
+        application = Application.builder().token(token).build()
 
+        # Register your handlers here (example)
+        application.add_handler(MessageHandler(filters.Chat(chat_id=GROUP_CHAT_ID) & ~filters.COMMAND, handle_new_job))
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CallbackQueryHandler(button_callback))
+        application.add_error_handler(error_handler)
 
-ok = ensure_webhook_registered(TOKEN, os.environ.get("WEBHOOK_URL", ""))
-if not ok:
-    logger.warning("Webhook registration failed; continuing to run so you can inspect logs.")
+        # Ensure webhook is registered BEFORE starting the server
+        ok = ensure_webhook_registered(token, webhook_base)
+        if not ok:
+            logger.warning("Webhook registration failed; continuing to run so you can inspect logs.")
 
+        logger.info("Calling run_webhook (this will block until shutdown)")
+        # Blocking call: do NOT await this
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=int(os.environ.get("PORT", 8080)),
+            url_path=token,
+            webhook_url=(webhook_base.rstrip("/") + "/" + token) if webhook_base else None
+        )
 
+        logger.info("run_webhook returned; application shutting down")
 
+    except Exception as e:
+        logger.critical(f"💥 فشل تشغيل البوت: {e}")
+        traceback.print_exc()
+        print(f"💥 خطأ حرج: {e}")
+        sys.stdout.flush()
 
-
-    
-    # application = None
-    # webhook_url = os.environ.get("WEBHOOK_URL")
-
-    # try:
-    #     # Build application (synchronous)
-    #     application = Application.builder().token(TOKEN).build()
-
-    #     # Register handlers
-    #     application.add_handler(MessageHandler(
-    #         filters.Chat(chat_id=GROUP_CHAT_ID) & ~filters.COMMAND,
-    #         handle_new_job
-    #     ))
-    #     application.add_handler(CommandHandler("start", start))
-    #     application.add_handler(CallbackQueryHandler(button_callback))
-    #     application.add_error_handler(error_handler)
-
-    #     # Run webhook as a blocking call (do NOT await)
-    #     application.run_webhook(
-    #         listen="0.0.0.0",
-    #         port=int(os.environ.get("PORT", 8080)),
-    #         url_path=TOKEN,
-    #         webhook_url=(webhook_url + "/" + TOKEN) if webhook_url else None
-    #     )
-    #     print(f"✅ تم إعداد Webhook على الرابط: {webhook_url}")
-    #     logger.info(f"Webhook مُنشئ على: {webhook_url}")
-    
-    # except Exception as e:
-    #     logger.critical(f"💥 فشل تشغيل البوت: {e}")
-    #     traceback.print_exc()
-    #     print(f"💥 خطأ حرج: {e}")
-
-    # finally:
-    #     # run_webhook blocks until shutdown; when it returns, ensure cleanup
-    #     if application is not None:
-    #         try:
-    #             # application.shutdown/stop are synchronous wrappers here; call them if needed
-    #             # but usually run_webhook handles lifecycle; keep this safe guard
-    #             if getattr(application, "running", False):
-    #                 application.shutdown()
-    #                 application.stop()
-    #                 logger.info("✅ Application shutdown completed")
-    #         except Exception as shutdown_exc:
-    #             logger.warning(f"⚠️ خطأ أثناء الإغلاق: {shutdown_exc}")
-    #             traceback.print_exc()
+    finally:
+        # run_webhook blocks until shutdown; when it returns, ensure cleanup
+        if application is not None:
+            try:
+                if getattr(application, "running", False):
+                    application.shutdown()
+                    application.stop()
+                    logger.info("✅ Application shutdown completed")
+            except Exception as shutdown_exc:
+                logger.warning(f"⚠️ خطأ أثناء الإغلاق: {shutdown_exc}")
+                traceback.print_exc()
 
 
 if __name__ == "__main__":
     main()
+
 
 
 
